@@ -1,4 +1,5 @@
-package platform
+// Package jwt verifies bearer tokens for the courses service.
+package jwt
 
 import (
 	"fmt"
@@ -7,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// Claims are the HS256 claims issued by the auth service.
 type Claims struct {
 	jwt.RegisteredClaims
 	UPN         string   `json:"upn,omitempty"`
@@ -14,6 +16,7 @@ type Claims struct {
 	Permissions []string `json:"permissions"`
 }
 
+// SignHS256 signs a token with the shared HMAC secret.
 func SignHS256(secret, keyID, issuer, subject, upn string, groups, permissions []string, lifespan time.Duration) (string, error) {
 	if groups == nil {
 		groups = []string{}
@@ -33,18 +36,23 @@ func SignHS256(secret, keyID, issuer, subject, upn string, groups, permissions [
 		Groups:      groups,
 		Permissions: permissions,
 	}
-	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	var tok *jwt.Token
+	tok = jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tok.Header["kid"] = keyID
 	return tok.SignedString([]byte(secret))
 }
 
+// ParseHS256 validates a bearer token against the issuer and secret.
 func ParseHS256(secret, issuer, raw string) (*Claims, error) {
-	parser := jwt.NewParser(
+	var parser *jwt.Parser
+	parser = jwt.NewParser(
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 		jwt.WithIssuer(issuer),
 	)
 	claims := &Claims{}
-	tok, err := parser.ParseWithClaims(raw, claims, func(t *jwt.Token) (any, error) {
+	var tok *jwt.Token
+	var err error
+	tok, err = parser.ParseWithClaims(raw, claims, func(t *jwt.Token) (any, error) {
 		return []byte(secret), nil
 	})
 	if err != nil || !tok.Valid {

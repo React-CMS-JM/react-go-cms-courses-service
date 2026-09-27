@@ -1,4 +1,5 @@
-package platform
+// Package httpx writes JSON responses and applies CORS for the courses service.
+package httpx
 
 import (
 	"encoding/json"
@@ -8,26 +9,32 @@ import (
 	"strings"
 )
 
+// APIError is an HTTP failure with a response field name.
 type APIError struct {
 	Status  int
 	Message string
 	Field   string
 }
 
+// Error returns the response message.
 func (e *APIError) Error() string { return e.Message }
 
+// BadRequest builds a 400 API error.
 func BadRequest(field, msg string) *APIError {
 	return &APIError{Status: http.StatusBadRequest, Message: msg, Field: field}
 }
 
+// Unauthorized builds a 401 API error.
 func Unauthorized(msg string) *APIError {
 	return &APIError{Status: http.StatusUnauthorized, Message: msg, Field: "message"}
 }
 
+// NotFound builds a 404 API error.
 func NotFound(field, msg string) *APIError {
 	return &APIError{Status: http.StatusNotFound, Message: msg, Field: field}
 }
 
+// WriteJSON writes a JSON body with HTML escaping disabled.
 func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -36,10 +43,12 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 	_ = enc.Encode(v)
 }
 
+// WriteNoContent writes HTTP 204.
 func WriteNoContent(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// WriteError writes an APIError body, or a generic 500.
 func WriteError(w http.ResponseWriter, err error, defaultField string) {
 	var api *APIError
 	if errors.As(err, &api) {
@@ -53,15 +62,16 @@ func WriteError(w http.ResponseWriter, err error, defaultField string) {
 	WriteJSON(w, http.StatusInternalServerError, map[string]string{defaultField: "Internal server error"})
 }
 
+// DecodeJSON decodes a body and rejects unknown fields.
 func DecodeJSON(r *http.Request, dest any) error {
 	if r.Body == nil {
 		return BadRequest("message", "request body is required")
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	// Frontend payloads match the known fields. Unknown fields are rejected so typos fail closed.
-	// Re-enable if a client starts sending extras; the React app does not.
-	if err := dec.Decode(dest); err != nil {
+	var err error
+	err = dec.Decode(dest)
+	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return BadRequest("message", "request body is required")
 		}
@@ -76,16 +86,19 @@ func DecodeJSONLenient(r *http.Request, dest any) error {
 		return io.EOF
 	}
 	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(dest); err != nil {
+	var err error
+	err = dec.Decode(dest)
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
+// CORS allows the configured browser origins.
 func CORS(origins []string, next http.Handler) http.Handler {
 	allowed := map[string]struct{}{}
-	for _, o := range origins {
-		allowed[o] = struct{}{}
+	for _, origin := range origins {
+		allowed[origin] = struct{}{}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
@@ -103,14 +116,16 @@ func CORS(origins []string, next http.Handler) http.Handler {
 	})
 }
 
+// BearerToken returns the bearer token, or an empty string when the header is absent.
 func BearerToken(r *http.Request) string {
-	h := r.Header.Get("Authorization")
-	if len(h) < 7 || !strings.EqualFold(h[:7], "Bearer ") {
+	header := r.Header.Get("Authorization")
+	if len(header) < 7 || !strings.EqualFold(header[:7], "Bearer ") {
 		return ""
 	}
-	return strings.TrimSpace(h[7:])
+	return strings.TrimSpace(header[7:])
 }
 
+// QueryInt reads an integer query parameter, or def when it is missing or invalid.
 func QueryInt(r *http.Request, name string, def int) int {
 	raw := r.URL.Query().Get(name)
 	if raw == "" {
