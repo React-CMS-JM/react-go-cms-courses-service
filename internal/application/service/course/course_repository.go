@@ -1,4 +1,3 @@
-// Package course applies course use cases.
 package course
 
 import (
@@ -6,17 +5,6 @@ import (
 	"time"
 
 	"react-go-cms-courses-service/internal/domain/entity"
-)
-
-const (
-	// StatusPublished is the public course status.
-	StatusPublished = "published"
-	statusDraft     = "draft"
-	accessPublic    = "public"
-	defaultLanguage = "en"
-	minPageIndex    = 0
-	minPageSize     = 1
-	maxPageSize     = 100
 )
 
 // Repository is the course persistence port.
@@ -33,14 +21,4 @@ type Repository interface {
 	Delete(ctx context.Context, id string) error
 	ListMetadata(ctx context.Context, id string) ([]entity.Metadata, error)
 	ReplaceMetadata(ctx context.Context, id string, items []entity.MetadataInput) error
-}
-
-// Service coordinates course commands and queries.
-type Service struct {
-	repository Repository
-}
-
-// New builds a course service.
-func New(repository Repository) *Service {
-	return &Service{repository: repository}
 }

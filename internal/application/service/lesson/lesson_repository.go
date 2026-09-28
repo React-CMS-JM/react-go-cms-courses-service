@@ -1,16 +1,9 @@
-// Package lesson applies lesson use cases.
 package lesson
 
 import (
 	"context"
 
 	"react-go-cms-courses-service/internal/domain/entity"
-)
-
-const (
-	defaultAccess   = "premium"
-	defaultSort     = 0
-	defaultLanguage = "en"
 )
 
 // Repository is the lesson persistence port.
@@ -28,14 +21,4 @@ type Repository interface {
 	UpsertTranslation(ctx context.Context, lessonID string, translation *entity.LessonTranslation) error
 	TouchUpdatedAt(ctx context.Context, lessonID string)
 	Delete(ctx context.Context, lessonID string) error
-}
-
-// Service coordinates lesson commands and queries.
-type Service struct {
-	repository Repository
-}
-
-// New builds a lesson service.
-func New(repository Repository) *Service {
-	return &Service{repository: repository}
 }
